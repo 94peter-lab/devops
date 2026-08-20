@@ -11,7 +11,15 @@ services:
     container_name: github-runner
     restart: always
     environment:
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      # If GITHUB_TOKEN is set, it takes priority. Otherwise it is fetched from
+      # Infisical using the INFISICAL_* vars below (all three are required).
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
+      - INFISICAL_CLIENT_SECRET=${INFISICAL_CLIENT_SECRET:-}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID:-}
+      - INFISICAL_ENV=${INFISICAL_ENV:-prod}
+      - INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
+      - INFISICAL_SECRET_NAME=${INFISICAL_SECRET_NAME:-GITHUB_TOKEN}
       - REPO_URL=${REPO_URL}
       - RUNNER_LABELS=${RUNNER_LABELS:-self-hosted,coolify}
       - DAGGER_VERSION=${DAGGER_VERSION:-0.12.0}
