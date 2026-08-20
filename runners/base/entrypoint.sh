@@ -8,8 +8,39 @@ if [ -z "$REPO_URL" ]; then
 fi
 
 if [ -z "$GITHUB_TOKEN" ]; then
-  echo "Error: GITHUB_TOKEN is not set."
-  exit 1
+  if [ -n "$INFISICAL_CLIENT_ID" ] && [ -n "$INFISICAL_CLIENT_SECRET" ] && [ -n "$INFISICAL_PROJECT_ID" ]; then
+    echo "GITHUB_TOKEN not set, fetching it from Infisical..."
+
+    INFISICAL_ENV=${INFISICAL_ENV:-prod}
+    INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
+    INFISICAL_SECRET_NAME=${INFISICAL_SECRET_NAME:-GITHUB_TOKEN}
+
+    INFISICAL_TOKEN=$(infisical login \
+      --method=universal-auth \
+      --client-id="${INFISICAL_CLIENT_ID}" \
+      --client-secret="${INFISICAL_CLIENT_SECRET}" \
+      --silent --plain) || true
+
+    if [ -z "$INFISICAL_TOKEN" ]; then
+      echo "Error: Failed to authenticate with Infisical (check INFISICAL_CLIENT_ID/INFISICAL_CLIENT_SECRET)."
+      exit 1
+    fi
+
+    GITHUB_TOKEN=$(infisical secrets get "${INFISICAL_SECRET_NAME}" \
+      --projectId="${INFISICAL_PROJECT_ID}" \
+      --env="${INFISICAL_ENV}" \
+      --path="${INFISICAL_SECRET_PATH}" \
+      --token="${INFISICAL_TOKEN}" \
+      --plain) || true
+
+    if [ -z "$GITHUB_TOKEN" ]; then
+      echo "Error: Failed to fetch secret '${INFISICAL_SECRET_NAME}' from Infisical (project ${INFISICAL_PROJECT_ID}, env ${INFISICAL_ENV}, path ${INFISICAL_SECRET_PATH})."
+      exit 1
+    fi
+  else
+    echo "Error: GITHUB_TOKEN is not set, and INFISICAL_CLIENT_ID / INFISICAL_CLIENT_SECRET / INFISICAL_PROJECT_ID are not all set to fetch it from Infisical."
+    exit 1
+  fi
 fi
 
 # Automatically strip .git suffix and trailing slashes
