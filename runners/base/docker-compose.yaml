@@ -2,12 +2,11 @@ version: '3.8'
 
 services:
   runner:
-    build:
-      context: ./runners/base
-      dockerfile: Dockerfile
-      args:
-        DAGGER_VERSION: ${DAGGER_VERSION:-0.20.3}
-    image: devops-infra-runner:latest
+    # Pre-built by .github/workflows/build-runner-image.yml and published to
+    # GHCR. Pull the exact tag you want to run — there is no "latest" tag,
+    # each image is pinned to a specific runner_version + dagger_version pair.
+    # Example: ghcr.io/94peter-lab/gh-runner:2.319.1-dagger-0.20.3
+    image: ${RUNNER_IMAGE}
     container_name: github-runner
     restart: always
     environment:
@@ -20,7 +19,9 @@ services:
       - INFISICAL_ENV=${INFISICAL_ENV:-prod}
       - INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
       - INFISICAL_SECRET_NAME=${INFISICAL_SECRET_NAME:-GITHUB_TOKEN}
-      - REPO_URL=${REPO_URL}
+      # Set exactly one of REPO_URL (repo-level runner) or ORG_URL (org-level runner).
+      - REPO_URL=${REPO_URL:-}
+      - ORG_URL=${ORG_URL:-}
       - RUNNER_LABELS=${RUNNER_LABELS:-self-hosted,coolify}
       - DAGGER_VERSION=${DAGGER_VERSION:-0.12.0}
       - FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true

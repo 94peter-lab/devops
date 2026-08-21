@@ -1,9 +1,27 @@
 #!/bin/bash
 set -e
 
-# Validate required environment variables
-if [ -z "$REPO_URL" ]; then
-  echo "Error: REPO_URL is not set."
+# Validate scope: exactly one of REPO_URL (repo-level runner) or ORG_URL
+# (org-level runner) must be set.
+if [ -n "$REPO_URL" ] && [ -n "$ORG_URL" ]; then
+  echo "Error: Set only one of REPO_URL or ORG_URL, not both."
+  exit 1
+fi
+
+if [ -n "$REPO_URL" ]; then
+  SCOPE="repo"
+  TARGET_URL=$(echo "${REPO_URL}" | sed 's/\.git$//' | sed 's/\/$//')
+  OWNER_REPO=$(echo "${TARGET_URL}" | sed 's/.*github.com\///')
+  API_BASE="https://api.github.com/repos/${OWNER_REPO}"
+  echo "Detected Repo: ${OWNER_REPO}"
+elif [ -n "$ORG_URL" ]; then
+  SCOPE="org"
+  TARGET_URL=$(echo "${ORG_URL}" | sed 's/\/$//')
+  ORG=$(echo "${TARGET_URL}" | sed 's/.*github.com\///')
+  API_BASE="https://api.github.com/orgs/${ORG}"
+  echo "Detected Org: ${ORG}"
+else
+  echo "Error: Either REPO_URL or ORG_URL must be set."
   exit 1
 fi
 
@@ -43,29 +61,26 @@ if [ -z "$GITHUB_TOKEN" ]; then
   fi
 fi
 
-# Automatically strip .git suffix and trailing slashes
-REPO_URL=$(echo "${REPO_URL}" | sed 's/\.git$//' | sed 's/\/$//')
-
 # Fix Docker socket permissions if it exists
 if [ -S /var/run/docker.sock ]; then
   echo "Fixing Docker socket permissions..."
   sudo chmod 666 /var/run/docker.sock
 fi
 
-# Extract Owner and Repo from URL (e.g., https://github.com/owner/repo)
-OWNER_REPO=$(echo "${REPO_URL}" | sed 's/.*github.com\///')
-
-echo "Detected Repo: ${OWNER_REPO}"
-
 # 1. Get a Registration Token via API
-echo "Fetching registration token from GitHub..."
+# Note: for org-level runners, GITHUB_TOKEN needs the "admin:org" scope
+# (classic PAT) or the Organization permission "Self-hosted runners: Read
+# and write" (fine-grained PAT / GitHub App installation token). For
+# repo-level runners, it needs the "repo" scope or the repo Administration
+# permission.
+echo "Fetching registration token from GitHub (${SCOPE}-level)..."
 REG_TOKEN=$(curl -s -X POST \
   -H "Authorization: token ${GITHUB_TOKEN}" \
   -H "Accept: application/vnd.github.v3+json" \
-  "https://api.github.com/repos/${OWNER_REPO}/actions/runners/registration-token" | jq -r '.token')
+  "${API_BASE}/actions/runners/registration-token" | jq -r '.token')
 
 if [ "$REG_TOKEN" == "null" ] || [ -z "$REG_TOKEN" ]; then
-  echo "Error: Failed to get registration token. Check your GITHUB_TOKEN permissions and REPO_URL."
+  echo "Error: Failed to get registration token. Check your GITHUB_TOKEN permissions and ${SCOPE^^}_URL."
   exit 1
 fi
 
@@ -75,13 +90,13 @@ RUNNER_LABELS=${RUNNER_LABELS:-"self-hosted"}
 RUNNER_NAME=${RUNNER_NAME:-$(hostname)}
 FULL_LABELS="${RUNNER_LABELS},dagger:${DAGGER_VERSION}"
 
-echo "Configuring runner ${RUNNER_NAME} for ${REPO_URL} with labels: ${FULL_LABELS}"
+echo "Configuring runner ${RUNNER_NAME} for ${TARGET_URL} with labels: ${FULL_LABELS}"
 
 # Navigate to runner directory
 cd /home/runner
 
 # 2. Register the runner using the retrieved Registration Token
-./config.sh --url "${REPO_URL}" \
+./config.sh --url "${TARGET_URL}" \
             --token "${REG_TOKEN}" \
             --name "${RUNNER_NAME}" \
             --labels "${FULL_LABELS}" \
@@ -96,8 +111,8 @@ cleanup() {
     REMOVE_TOKEN=$(curl -s -X POST \
       -H "Authorization: token ${GITHUB_TOKEN}" \
       -H "Accept: application/vnd.github.v3+json" \
-      "https://api.github.com/repos/${OWNER_REPO}/actions/runners/remove-token" | jq -r '.token')
-    
+      "${API_BASE}/actions/runners/remove-token" | jq -r '.token')
+
     if [ "$REMOVE_TOKEN" != "null" ] && [ -n "$REMOVE_TOKEN" ]; then
         ./config.sh remove --token "${REMOVE_TOKEN}"
     else
