@@ -20,29 +20,35 @@ The following environment variables configure the runner:
 | `RUNNER_IMAGE` | Full GHCR image reference to pull (e.g. `ghcr.io/94peter-lab/gh-runner:2.319.1-dagger-0.20.3`), published by the [`build-runner-image.yml`](#3-publish-to-ghcr-manual) workflow. Required — there is no default/`latest` tag. |
 | `REPO_URL` | Repository URL to register a repo-level runner with (e.g. `https://github.com/owner/repo`). Set exactly one of `REPO_URL` or `ORG_URL`. |
 | `ORG_URL` | Organization URL to register an org-level runner with (e.g. `https://github.com/my-org`). Set exactly one of `REPO_URL` or `ORG_URL`. Requires `GITHUB_TOKEN` with the `admin:org` scope (classic PAT) or the Organization "Self-hosted runners: Read and write" permission (fine-grained PAT / GitHub App), instead of the repo-level `repo` scope / Administration permission. |
-| `GITHUB_TOKEN` | GitHub Personal Access Token with runner registration permissions. Optional if the `INFISICAL_*` variables below are set instead — see [GitHub Token Resolution](#github-token-resolution). |
+| `GITHUB_TOKEN` | GitHub Personal Access Token with runner registration permissions. Optional if a GitHub App or Infisical is set up instead — see [Credential Resolution](#credential-resolution). |
+| `GITHUB_APP_ID` | GitHub App ID, for minting an installation access token instead of using a PAT. Set together with `GITHUB_APP_PRIVATE_KEY`(`_BASE64`) and `GITHUB_APP_INSTALLATION_ID` — see [Credential Resolution](#credential-resolution). |
+| `GITHUB_APP_PRIVATE_KEY` / `GITHUB_APP_PRIVATE_KEY_BASE64` | The GitHub App's private key: either the literal PEM (`GITHUB_APP_PRIVATE_KEY`) or a base64-encoded PEM (`GITHUB_APP_PRIVATE_KEY_BASE64`, for env vars that don't handle multi-line values well). |
+| `GITHUB_APP_INSTALLATION_ID` | The GitHub App's installation ID on the target org/repo. |
 | `RUNNER_LABELS` | Additional labels for the runner (default: `self-hosted`). |
 | `RUNNER_NAME` | Name to register the runner under (default: container hostname). |
 | `DAGGER_VERSION`| The version of Dagger to label the runner with (default: `0.12.0`). Purely a display label at runtime — it should match the version actually baked into `RUNNER_IMAGE`, but nothing enforces that; keep them in sync yourself. |
 
-### GitHub Token Resolution
+### Credential Resolution
 
-If `GITHUB_TOKEN` is not set, the entrypoint tries to fetch it from [Infisical](https://infisical.com) using Universal Auth. This lets you avoid storing a long-lived PAT in Coolify/`.env` — the container only holds a machine identity credential, and the actual token is pulled at container start.
+Every credential the entrypoint needs (`GITHUB_TOKEN`, `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID`) is resolved the same way: **the environment variable of that exact name if set, otherwise an Infisical secret of that exact same name** (if Infisical is configured) — there's no way to rename what secret in Infisical backs which variable. `GITHUB_APP_PRIVATE_KEY` is the one exception in storage format: Infisical stores it as the raw multi-line PEM, while an env var must supply it base64-encoded as `GITHUB_APP_PRIVATE_KEY_BASE64` instead (multi-line env vars are awkward in most UIs, including Coolify's).
+
+This lets you avoid storing long-lived credentials in Coolify/`.env` directly — the container only holds an Infisical machine identity, and the actual credential is pulled at container start.
 
 | Variable | Description |
 |----------|-------------|
-| `INFISICAL_CLIENT_ID` | Universal Auth client ID for an Infisical machine identity. Required. |
-| `INFISICAL_CLIENT_SECRET` | Universal Auth client secret for the machine identity. Required. |
-| `INFISICAL_PROJECT_ID` | The Infisical project (workspace) ID containing the secret. Required. |
+| `INFISICAL_CLIENT_ID` | Universal Auth client ID for an Infisical machine identity. Required to use Infisical. |
+| `INFISICAL_CLIENT_SECRET` | Universal Auth client secret for the machine identity. Required to use Infisical. |
+| `INFISICAL_PROJECT_ID` | The Infisical project (workspace) ID containing the secrets. Required to use Infisical. |
 | `INFISICAL_ENV` | Infisical environment slug to read from (default: `prod`). |
 | `INFISICAL_SECRET_PATH` | Secret path within the project (default: `/`). |
-| `INFISICAL_SECRET_NAME` | Name of the secret holding the GitHub token (default: `GITHUB_TOKEN`). |
 | `INFISICAL_API_URL` | Only needed for a self-hosted Infisical instance; the CLI reads this automatically. |
 
 Resolution order at container start:
-1. `GITHUB_TOKEN` is set → used as-is.
-2. `GITHUB_TOKEN` is unset, but `INFISICAL_CLIENT_ID`, `INFISICAL_CLIENT_SECRET`, and `INFISICAL_PROJECT_ID` are all set → the entrypoint authenticates to Infisical and fetches `INFISICAL_SECRET_NAME` to use as the token.
-3. Neither is available → the entrypoint logs an error and exits (`exit 1`).
+1. Resolve `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, and `GITHUB_APP_INSTALLATION_ID` (env, else Infisical). If all three resolve, mint a GitHub App installation access token and use it — **this takes priority even if `GITHUB_TOKEN` also resolves to something.**
+2. Otherwise, resolve `GITHUB_TOKEN` (env, else Infisical) and use it as-is.
+3. If neither resolved anything, the entrypoint logs an error and exits (`exit 1`).
+
+Installation access tokens expire after 1 hour. Since this runner is long-lived, `cleanup()` mints a fresh one (rather than reusing the one from startup) before deregistering the runner on shutdown.
 
 ## Deployment & Image Building
 
@@ -74,7 +80,7 @@ The resulting image is published as `ghcr.io/<owner>/gh-runner:<runner_version>-
 3. Set the following Environment Variables in Coolify:
    - `RUNNER_IMAGE`: The GHCR image tag to pull (see [Publish to GHCR](#3-publish-to-ghcr-manual)).
    - `REPO_URL` (or `ORG_URL` for an org-level runner): the repository/organization URL.
-   - `GITHUB_TOKEN`: Your GitHub PAT — **or** `INFISICAL_CLIENT_ID` / `INFISICAL_CLIENT_SECRET` / `INFISICAL_PROJECT_ID` to fetch it from Infisical instead (see [GitHub Token Resolution](#github-token-resolution)).
+   - `GITHUB_TOKEN` **or** `GITHUB_APP_ID`/`GITHUB_APP_PRIVATE_KEY(_BASE64)`/`GITHUB_APP_INSTALLATION_ID` **or** `INFISICAL_CLIENT_ID`/`INFISICAL_CLIENT_SECRET`/`INFISICAL_PROJECT_ID` — see [Credential Resolution](#credential-resolution).
    - `DAGGER_VERSION`: The Dagger version baked into `RUNNER_IMAGE`, for the runner label (e.g., `0.20.3`).
 4. Click **Deploy**.
 

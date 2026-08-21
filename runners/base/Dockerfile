@@ -10,13 +10,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     docker.io \
     sudo \
     jq \
+    openssl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Dagger CLI
 ARG DAGGER_VERSION
 RUN curl -L https://dl.dagger.io/dagger/install.sh | DAGGER_VERSION=${DAGGER_VERSION} BIN_DIR=/usr/local/bin sh
 
-# Install Infisical CLI (used by entrypoint.sh to fetch GITHUB_TOKEN when not set directly)
+# Install Infisical CLI (used by entrypoint.sh to fetch credentials when not set directly as env vars)
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
     && apt-get update && apt-get install -y --no-install-recommends infisical \
     && rm -rf /var/lib/apt/lists/*

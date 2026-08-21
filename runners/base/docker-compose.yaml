@@ -10,15 +10,19 @@ services:
     container_name: github-runner
     restart: always
     environment:
-      # If GITHUB_TOKEN is set, it takes priority. Otherwise it is fetched from
-      # Infisical using the INFISICAL_* vars below (all three are required).
+      # Credential resolution: GitHub App (if all three GITHUB_APP_* resolve,
+      # via env or Infisical) takes priority over GITHUB_TOKEN. Anything left
+      # unset here falls back to an Infisical secret of the same name, if the
+      # INFISICAL_* vars below are set.
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GITHUB_APP_ID=${GITHUB_APP_ID:-}
+      - GITHUB_APP_PRIVATE_KEY_BASE64=${GITHUB_APP_PRIVATE_KEY_BASE64:-}
+      - GITHUB_APP_INSTALLATION_ID=${GITHUB_APP_INSTALLATION_ID:-}
       - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
       - INFISICAL_CLIENT_SECRET=${INFISICAL_CLIENT_SECRET:-}
       - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID:-}
       - INFISICAL_ENV=${INFISICAL_ENV:-prod}
       - INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
-      - INFISICAL_SECRET_NAME=${INFISICAL_SECRET_NAME:-GITHUB_TOKEN}
       # Set exactly one of REPO_URL (repo-level runner) or ORG_URL (org-level runner).
       - REPO_URL=${REPO_URL:-}
       - ORG_URL=${ORG_URL:-}
