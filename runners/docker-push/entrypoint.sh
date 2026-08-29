@@ -26,10 +26,9 @@ else
   exit 1
 fi
 
-if [ -z "$REGISTRY_URL" ]; then
-  echo "Error: REGISTRY_URL is not set."
-  exit 1
-fi
+# REGISTRY_URL is optional: set it (along with REGISTRY_USERNAME /
+# REGISTRY_PASSWORD) only if jobs also need to push to a private registry.
+# GHCR login (via GITHUB_TOKEN) always happens below regardless.
 
 # Resolve GITHUB_TOKEN and registry credentials, falling back to Infisical
 # (Universal Auth) for any that are not set directly.
@@ -37,10 +36,17 @@ GHCR_USERNAME=${GHCR_USERNAME:-$OWNER}
 INFISICAL_ENV=${INFISICAL_ENV:-prod}
 INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
 
+NEED_INFISICAL=false
+[ -z "$GITHUB_TOKEN" ] && NEED_INFISICAL=true
+if [ -n "$REGISTRY_URL" ]; then
+  [ -z "$REGISTRY_USERNAME" ] && NEED_INFISICAL=true
+  [ -z "$REGISTRY_PASSWORD" ] && NEED_INFISICAL=true
+fi
+
 INFISICAL_TOKEN=""
-if [ -z "$GITHUB_TOKEN" ] || [ -z "$REGISTRY_USERNAME" ] || [ -z "$REGISTRY_PASSWORD" ]; then
+if [ "$NEED_INFISICAL" = true ]; then
   if [ -z "$INFISICAL_CLIENT_ID" ] || [ -z "$INFISICAL_CLIENT_SECRET" ] || [ -z "$INFISICAL_PROJECT_ID" ]; then
-    echo "Error: GITHUB_TOKEN / REGISTRY_USERNAME / REGISTRY_PASSWORD are not all set directly, and INFISICAL_CLIENT_ID / INFISICAL_CLIENT_SECRET / INFISICAL_PROJECT_ID are not all set to fetch the missing ones from Infisical."
+    echo "Error: GITHUB_TOKEN (and REGISTRY_USERNAME / REGISTRY_PASSWORD, if REGISTRY_URL is set) are not all set directly, and INFISICAL_CLIENT_ID / INFISICAL_CLIENT_SECRET / INFISICAL_PROJECT_ID are not all set to fetch the missing ones from Infisical."
     exit 1
   fi
 
@@ -75,19 +81,21 @@ if [ -z "$GITHUB_TOKEN" ]; then
   fi
 fi
 
-if [ -z "$REGISTRY_USERNAME" ]; then
-  REGISTRY_USERNAME=$(fetch_secret "REGISTRY_USERNAME") || true
+if [ -n "$REGISTRY_URL" ]; then
   if [ -z "$REGISTRY_USERNAME" ]; then
-    echo "Error: Failed to fetch secret 'REGISTRY_USERNAME' from Infisical (project ${INFISICAL_PROJECT_ID}, env ${INFISICAL_ENV}, path ${INFISICAL_SECRET_PATH})."
-    exit 1
+    REGISTRY_USERNAME=$(fetch_secret "REGISTRY_USERNAME") || true
+    if [ -z "$REGISTRY_USERNAME" ]; then
+      echo "Error: Failed to fetch secret 'REGISTRY_USERNAME' from Infisical (project ${INFISICAL_PROJECT_ID}, env ${INFISICAL_ENV}, path ${INFISICAL_SECRET_PATH})."
+      exit 1
+    fi
   fi
-fi
 
-if [ -z "$REGISTRY_PASSWORD" ]; then
-  REGISTRY_PASSWORD=$(fetch_secret "REGISTRY_PASSWORD") || true
   if [ -z "$REGISTRY_PASSWORD" ]; then
-    echo "Error: Failed to fetch secret 'REGISTRY_PASSWORD' from Infisical (project ${INFISICAL_PROJECT_ID}, env ${INFISICAL_ENV}, path ${INFISICAL_SECRET_PATH})."
-    exit 1
+    REGISTRY_PASSWORD=$(fetch_secret "REGISTRY_PASSWORD") || true
+    if [ -z "$REGISTRY_PASSWORD" ]; then
+      echo "Error: Failed to fetch secret 'REGISTRY_PASSWORD' from Infisical (project ${INFISICAL_PROJECT_ID}, env ${INFISICAL_ENV}, path ${INFISICAL_SECRET_PATH})."
+      exit 1
+    fi
   fi
 fi
 
@@ -97,9 +105,11 @@ if [ -S /var/run/docker.sock ]; then
   sudo chmod 666 /var/run/docker.sock
 fi
 
-# Log in to the private registry
-echo "Logging in to ${REGISTRY_URL}..."
-echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY_URL}" -u "${REGISTRY_USERNAME}" --password-stdin
+# Log in to the private registry, if configured
+if [ -n "$REGISTRY_URL" ]; then
+  echo "Logging in to ${REGISTRY_URL}..."
+  echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY_URL}" -u "${REGISTRY_USERNAME}" --password-stdin
+fi
 
 # Log in to GHCR (reuses GITHUB_TOKEN as the password)
 echo "Logging in to ghcr.io as ${GHCR_USERNAME}..."
@@ -170,7 +180,9 @@ cleanup() {
     fi
 
     docker buildx rm "${BUILDX_BUILDER_NAME}" >/dev/null 2>&1 || true
-    docker logout "${REGISTRY_URL}" >/dev/null 2>&1 || true
+    if [ -n "$REGISTRY_URL" ]; then
+      docker logout "${REGISTRY_URL}" >/dev/null 2>&1 || true
+    fi
     docker logout ghcr.io >/dev/null 2>&1 || true
 }
 
