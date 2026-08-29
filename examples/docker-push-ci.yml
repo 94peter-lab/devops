@@ -1,0 +1,27 @@
+name: Docker Build & Push Example
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-push:
+    # Match the label registered by our docker-push runner
+    runs-on: [self-hosted, docker-push]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # The runner already ran `docker login` for both the private
+      # registry (REGISTRY_URL) and ghcr.io at container start, and set up
+      # a buildx builder (with QEMU) at container start, so jobs can build
+      # and push multi-platform images directly without extra setup.
+
+      - name: Build & push (multi-platform) to private registry and GHCR
+        run: |
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -t ${{ vars.REGISTRY_URL }}/myapp:${{ github.sha }} \
+            -t ghcr.io/${{ github.repository }}:${{ github.sha }} \
+            --push .
