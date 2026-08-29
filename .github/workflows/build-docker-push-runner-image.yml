@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       buildx_version:
-        description: 'docker/buildx release version to bake into the image'
+        description: 'docker/buildx release version to bake into the image (with or without a leading "v", e.g. 0.19.3 or v0.19.3)'
         required: true
         type: string
 

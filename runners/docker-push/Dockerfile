@@ -28,6 +28,7 @@ RUN mkdir -p /usr/local/lib/docker/cli-plugins \
          arm64) BUILDX_ARCH=arm64 ;; \
          *) echo "Unsupported architecture for buildx: $ARCH" >&2; exit 1 ;; \
        esac \
+    && BUILDX_VERSION="${BUILDX_VERSION#v}" \
     && curl -fsSL "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${BUILDX_ARCH}" \
        -o /usr/local/lib/docker/cli-plugins/docker-buildx \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
