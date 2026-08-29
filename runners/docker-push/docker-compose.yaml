@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  runner:
+    # Pre-built by .github/workflows/build-docker-push-runner-image.yml and
+    # published to GHCR. Pull the exact tag you want to run.
+    # Example: ghcr.io/94peter-lab/gh-runner-docker-push:2.336.0-buildx-0.19.3
+    image: ${RUNNER_IMAGE}
+    container_name: github-runner-docker-push
+    restart: always
+    environment:
+      # Credential resolution: GitHub App (if all three GITHUB_APP_* resolve,
+      # via env or Infisical) takes priority over GITHUB_TOKEN. Anything left
+      # unset here falls back to an Infisical secret of the same name, if the
+      # INFISICAL_* vars below are set.
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GITHUB_APP_ID=${GITHUB_APP_ID:-}
+      - GITHUB_APP_PRIVATE_KEY_BASE64=${GITHUB_APP_PRIVATE_KEY_BASE64:-}
+      - GITHUB_APP_INSTALLATION_ID=${GITHUB_APP_INSTALLATION_ID:-}
+      - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
+      - INFISICAL_CLIENT_SECRET=${INFISICAL_CLIENT_SECRET:-}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID:-}
+      - INFISICAL_ENV=${INFISICAL_ENV:-prod}
+      - INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
+      # Set exactly one of REPO_URL (repo-level runner) or ORG_URL (org-level runner).
+      - REPO_URL=${REPO_URL:-}
+      - ORG_URL=${ORG_URL:-}
+      # Private registry login is optional: leave these unset for a GHCR-only setup.
+      - REGISTRY_URL=${REGISTRY_URL:-}
+      - REGISTRY_USERNAME=${REGISTRY_USERNAME:-}
+      - REGISTRY_PASSWORD=${REGISTRY_PASSWORD:-}
+      - GHCR_USERNAME=${GHCR_USERNAME:-}
+      - ENABLE_QEMU=${ENABLE_QEMU:-true}
+      - BUILDX_BUILDER_NAME=${BUILDX_BUILDER_NAME:-docker-push-builder}
+      - RUNNER_LABELS=${RUNNER_LABELS:-self-hosted,docker-push}
+      - RUNNER_NAME=${RUNNER_NAME:-docker-push-runner}
+    volumes:
+      # Required: this runner needs a real Docker daemon (for QEMU/buildx
+      # setup at startup, and for jobs' own docker build/push commands).
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Note: On some systems, you might need to specify the group id of the docker group
+    # group_add:
+    #   - "999"
