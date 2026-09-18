@@ -13,8 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install act_runner binary from Gitea releases
-ARG ACT_RUNNER_VERSION=0.2.11
+# Install gitea-runner / act_runner binary from Gitea releases
+ARG ACT_RUNNER_VERSION=3.5.0
 RUN ARCH=$(dpkg --print-architecture) \
     && case "$ARCH" in \
          amd64) ACT_ARCH=amd64 ;; \
@@ -22,12 +22,15 @@ RUN ARCH=$(dpkg --print-architecture) \
          *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; \
        esac \
     && ACT_RUNNER_VERSION="${ACT_RUNNER_VERSION#v}" \
-    && curl -fsSL "https://gitea.com/gitea/act_runner/releases/download/v${ACT_RUNNER_VERSION}/act_runner-${ACT_RUNNER_VERSION}-linux-${ACT_ARCH}" \
-       -o /usr/local/bin/act_runner \
-    && chmod +x /usr/local/bin/act_runner
+    && (curl -fsSL "https://dl.gitea.com/gitea-runner/${ACT_RUNNER_VERSION}/gitea-runner-${ACT_RUNNER_VERSION}-linux-${ACT_ARCH}" -o /usr/local/bin/act_runner || \
+        curl -fsSL "https://dl.gitea.com/act_runner/${ACT_RUNNER_VERSION}/act_runner-${ACT_RUNNER_VERSION}-linux-${ACT_ARCH}" -o /usr/local/bin/act_runner || \
+        curl -fsSL "https://gitea.com/gitea/runner/releases/download/v${ACT_RUNNER_VERSION}/gitea-runner-${ACT_RUNNER_VERSION}-linux-${ACT_ARCH}" -o /usr/local/bin/act_runner || \
+        curl -fsSL "https://gitea.com/gitea/act_runner/releases/download/v${ACT_RUNNER_VERSION}/act_runner-${ACT_RUNNER_VERSION}-linux-${ACT_ARCH}" -o /usr/local/bin/act_runner) \
+    && chmod +x /usr/local/bin/act_runner \
+    && ln -sf /usr/local/bin/act_runner /usr/local/bin/gitea-runner
 
 # Install Dagger CLI
-ARG DAGGER_VERSION=0.12.0
+ARG DAGGER_VERSION=0.21.7
 RUN curl -L https://dl.dagger.io/dagger/install.sh | DAGGER_VERSION=${DAGGER_VERSION} BIN_DIR=/usr/local/bin sh
 
 # Install Infisical CLI (used by entrypoint.sh to fetch credentials when not set directly)

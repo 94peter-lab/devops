@@ -6,7 +6,7 @@ on:
       act_runner_version:
         description: 'Gitea act_runner version to bake into the image (e.g. 0.2.11)'
         required: true
-        default: '0.2.11'
+        default: '3.5.0'
         type: string
       buildx_version:
         description: 'docker/buildx version to bake into the image (e.g. 0.19.3)'

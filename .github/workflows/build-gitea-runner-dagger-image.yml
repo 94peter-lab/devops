@@ -6,12 +6,12 @@ on:
       act_runner_version:
         description: 'Gitea act_runner version to bake into the image (e.g. 0.2.11)'
         required: true
-        default: '0.2.11'
+        default: '3.5.0'
         type: string
       dagger_version:
         description: 'Dagger CLI version to bake into the image (e.g. 0.12.0)'
         required: true
-        default: '0.12.0'
+        default: '0.21.7'
         type: string
 
 permissions:

@@ -15,7 +15,7 @@ services:
       - INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
       - RUNNER_NAME=${RUNNER_NAME:-gitea-dagger-runner}
       - RUNNER_LABELS=${RUNNER_LABELS:-ubuntu-latest:docker://gitea/runner-images:ubuntu-latest,self-hosted:host}
-      - DAGGER_VERSION=${DAGGER_VERSION:-0.12.0}
+      - DAGGER_VERSION=${DAGGER_VERSION:-0.21.7}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner-data:/data
