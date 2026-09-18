@@ -1,15 +1,17 @@
-name: Build Runner Image
+name: Build Gitea Dagger Runner Image
 
 on:
   workflow_dispatch:
     inputs:
-      dagger_version:
-        description: 'Dagger CLI version to bake into the image'
+      act_runner_version:
+        description: 'Gitea act_runner version to bake into the image (e.g. 0.2.11)'
         required: true
+        default: '0.2.11'
         type: string
-      runner_version:
-        description: 'ghcr.io/actions/actions-runner base image tag to build from'
+      dagger_version:
+        description: 'Dagger CLI version to bake into the image (e.g. 0.12.0)'
         required: true
+        default: '0.12.0'
         type: string
 
 permissions:
@@ -39,17 +41,17 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
-          context: ./runners/github/dagger
+          context: ./runners/gitea/dagger
           push: true
           platforms: linux/amd64,linux/arm64
           build-args: |
+            ACT_RUNNER_VERSION=${{ inputs.act_runner_version }}
             DAGGER_VERSION=${{ inputs.dagger_version }}
-            RUNNER_VERSION=${{ inputs.runner_version }}
-          tags: ghcr.io/${{ github.repository_owner }}/gh-runner:${{ inputs.runner_version }}-dagger-${{ inputs.dagger_version }}
+          tags: ghcr.io/${{ github.repository_owner }}/gitea-dagger-runner:${{ inputs.act_runner_version }}-dagger-${{ inputs.dagger_version }}
 
       - name: Print published tag
         run: |
           echo "### Published image" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          echo "ghcr.io/${{ github.repository_owner }}/gh-runner:${{ inputs.runner_version }}-dagger-${{ inputs.dagger_version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "ghcr.io/${{ github.repository_owner }}/gitea-dagger-runner:${{ inputs.act_runner_version }}-dagger-${{ inputs.dagger_version }}" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
