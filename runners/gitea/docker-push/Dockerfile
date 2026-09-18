@@ -1,0 +1,64 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    docker.io \
+    sudo \
+    jq \
+    ca-certificates \
+    openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install act_runner binary from Gitea releases
+ARG ACT_RUNNER_VERSION=0.2.11
+RUN ARCH=$(dpkg --print-architecture) \
+    && case "$ARCH" in \
+         amd64) ACT_ARCH=amd64 ;; \
+         arm64) ACT_ARCH=arm64 ;; \
+         *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; \
+       esac \
+    && ACT_RUNNER_VERSION="${ACT_RUNNER_VERSION#v}" \
+    && curl -fsSL "https://gitea.com/gitea/act_runner/releases/download/v${ACT_RUNNER_VERSION}/act_runner-${ACT_RUNNER_VERSION}-linux-${ACT_ARCH}" \
+       -o /usr/local/bin/act_runner \
+    && chmod +x /usr/local/bin/act_runner
+
+# Install Infisical CLI
+RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
+    && apt-get update && apt-get install -y --no-install-recommends infisical \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Docker Buildx as a CLI plugin
+ARG BUILDX_VERSION=0.19.3
+RUN mkdir -p /usr/local/lib/docker/cli-plugins \
+    && ARCH=$(dpkg --print-architecture) \
+    && case "$ARCH" in \
+         amd64) BUILDX_ARCH=amd64 ;; \
+         arm64) BUILDX_ARCH=arm64 ;; \
+         *) echo "Unsupported architecture for buildx: $ARCH" >&2; exit 1 ;; \
+       esac \
+    && BUILDX_VERSION="${BUILDX_VERSION#v}" \
+    && curl -fsSL "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${BUILDX_ARCH}" \
+       -o /usr/local/lib/docker/cli-plugins/docker-buildx \
+    && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+
+# Ensure runner user exists and has sudo access
+RUN useradd -m -s /bin/bash runner \
+    && echo "runner ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/runner
+
+# Prepare directories
+RUN mkdir -p /etc/act_runner /data \
+    && chown -R runner:runner /etc/act_runner /data
+
+COPY config.yaml /etc/act_runner/config.yaml
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    && chown runner:runner /etc/act_runner/config.yaml
+
+USER runner
+WORKDIR /data
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

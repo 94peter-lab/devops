@@ -7,6 +7,7 @@ This repository contains the infrastructure configuration for GitHub & Gitea Sel
 - `runners/github/dagger/`: GitHub Actions runner image pre-installed with Dagger CLI & Infisical — see [`runners/github/dagger/README.md`](runners/github/dagger/README.md).
 - `runners/github/docker-push/`: GitHub Actions runner image with Docker Buildx pre-installed.
 - `runners/gitea/dagger/`: Gitea runner (`act_runner`) image pre-installed with Dagger CLI & Infisical — see [`runners/gitea/dagger/README.md`](runners/gitea/dagger/README.md).
+- `runners/gitea/docker-push/`: Gitea runner (`act_runner`) image with Docker Buildx pre-installed — see [`runners/gitea/docker-push/README.md`](runners/gitea/docker-push/README.md).
 - `.github/workflows/`: Workflows to build and publish runner images to GHCR.
 - `examples/`: Example workflow files utilizing custom runners.
 

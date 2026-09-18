@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  runner:
+    image: ${RUNNER_IMAGE:-ghcr.io/94peter-lab/gitea-docker-push-runner:latest}
+    container_name: gitea-docker-push-runner
+    restart: always
+    environment:
+      - GITEA_INSTANCE_URL=${GITEA_INSTANCE_URL:-}
+      - GITEA_RUNNER_REGISTRATION_TOKEN=${GITEA_RUNNER_REGISTRATION_TOKEN:-}
+      - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
+      - INFISICAL_CLIENT_SECRET=${INFISICAL_CLIENT_SECRET:-}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID:-}
+      - INFISICAL_ENV=${INFISICAL_ENV:-prod}
+      - INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
+      - RUNNER_NAME=${RUNNER_NAME:-gitea-docker-push-runner}
+      - RUNNER_LABELS=${RUNNER_LABELS:-docker-push:host,ubuntu-latest:docker://gitea/runner-images:ubuntu-latest,self-hosted:host}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-data:/data
+
+volumes:
+  runner-data:
+    driver: local
