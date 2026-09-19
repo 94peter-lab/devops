@@ -64,6 +64,27 @@ fi
 RUNNER_NAME="${RUNNER_NAME:-gitea-dagger-runner}"
 RUNNER_LABELS="${RUNNER_LABELS:-ubuntu-latest:docker://gitea/runner-images:ubuntu-latest,self-hosted:host}"
 
+if [ -n "$RUNNER_LABELS" ]; then
+  echo "Updating /etc/act_runner/config.yaml with labels: ${RUNNER_LABELS}"
+  sudo awk -v labels="$RUNNER_LABELS" '
+    BEGIN { in_labels=0; n=split(labels, arr, ",") }
+    /^  labels:/ {
+      print "  labels:"
+      for (i=1; i<=n; i++) {
+        gsub(/^[ \t]+|[ \t]+$/, "", arr[i])
+        if (length(arr[i]) > 0) {
+          print "    - \"" arr[i] "\""
+        }
+      }
+      in_labels=1
+      next
+    }
+    in_labels && /^    - / { next }
+    in_labels && !/^    - / { in_labels=0 }
+    { print }
+  ' /etc/act_runner/config.yaml > /tmp/config.yaml.tmp && sudo mv /tmp/config.yaml.tmp /etc/act_runner/config.yaml
+fi
+
 # Check if .runner exists in /data
 if [ ! -f /data/.runner ]; then
   if [ -z "$GITEA_INSTANCE_URL" ] || [ -z "$GITEA_RUNNER_REGISTRATION_TOKEN" ]; then
