@@ -16,7 +16,7 @@ runner:
 
 cache:
   enabled: true
-  dir: ""
+  dir: "/home/runner/.cache/actcache"
   host: ""
   port: 0
 

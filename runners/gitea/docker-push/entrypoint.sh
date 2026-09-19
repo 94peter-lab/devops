@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Ensure cache and data directories exist and are owned by runner user
+sudo mkdir -p /home/runner/.cache/actcache /data
+sudo chown -R runner:runner /home/runner/.cache /data
+
 INFISICAL_TOKEN=""
 
 infisical_configured() {
