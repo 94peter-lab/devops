@@ -22,6 +22,6 @@ cache:
 
 container:
   network: ""
-  options:
-  privilege: false
-  workdir_parent:
+  options: ""
+  privileged: false
+  workdir_parent: ""

@@ -76,7 +76,6 @@ if [ ! -f /data/.runner ]; then
     --instance "${GITEA_INSTANCE_URL}" \
     --token "${GITEA_RUNNER_REGISTRATION_TOKEN}" \
     --name "${RUNNER_NAME}" \
-    --labels "${RUNNER_LABELS}" \
     --config /etc/act_runner/config.yaml \
     --no-interactive
 fi
