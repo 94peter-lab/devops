@@ -22,7 +22,6 @@ cache:
 
 container:
   network: ""
-  enable_git_fetch_advise: true
   options:
   privilege: false
   workdir_parent:
