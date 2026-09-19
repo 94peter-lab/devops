@@ -33,6 +33,12 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - dagger-cache:/home/runner/.cache/dagger
+    healthcheck:
+      test: ["CMD", "pgrep", "Runner.Listener"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     # Ensure the runner can access the host docker socket
     # Note: On some systems, you might need to specify the group id of docker
     # group_add:

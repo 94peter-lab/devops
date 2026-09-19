@@ -38,6 +38,12 @@ services:
       # Required: this runner needs a real Docker daemon (for QEMU/buildx
       # setup at startup, and for jobs' own docker build/push commands).
       - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "pgrep", "Runner.Listener"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     # Note: On some systems, you might need to specify the group id of the docker group
     # group_add:
     #   - "999"

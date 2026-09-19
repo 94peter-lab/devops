@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     docker.io \
     sudo \
     jq \
+    procps \
     ca-certificates \
     openssl \
     && rm -rf /var/lib/apt/lists/*
@@ -53,5 +54,8 @@ RUN chmod +x /usr/local/bin/entrypoint.sh \
 
 USER runner
 WORKDIR /data
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD ["pgrep", "act_runner"]
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     docker.io \
     sudo \
     jq \
+    procps \
     openssl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -30,5 +31,8 @@ COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 USER runner
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD ["pgrep", "Runner.Listener"]
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
