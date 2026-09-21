@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
     docker.io \
+    docker-compose-v2 \
+    gcc \
+    unzip \
     sudo \
     jq \
     procps \
