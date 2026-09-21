@@ -35,6 +35,11 @@ RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
     && apt-get update && apt-get install -y --no-install-recommends infisical \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Node.js (LTS v20) required for running JavaScript Actions (e.g. actions/checkout)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Docker Buildx as a CLI plugin
 ARG BUILDX_VERSION=0.19.3
 RUN mkdir -p /usr/local/lib/docker/cli-plugins \
