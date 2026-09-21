@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     docker.io \
     docker-compose-v2 \
     gcc \
+    libc6-dev \
     unzip \
     sudo \
     jq \
